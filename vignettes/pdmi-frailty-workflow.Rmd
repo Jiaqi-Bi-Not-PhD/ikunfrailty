@@ -1,0 +1,118 @@
+---
+title: "ikunfrailty Workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ikunfrailty Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This workflow shows the intended user path for the validated V2.2 scalar
+engine: one continuous PRS covariate and one binary carrier covariate in an
+ascertainment-corrected frailtypack correlated frailty model.
+
+For a full example using the shipped V2.2-style simfam replicate with 498
+families and 20% MAR missingness, see the installed example script
+`system.file("examples", "v22-one-replicate-mi.R", package = "ikunfrailty")`
+and the vignette "V2.2 One-Replicate Multiple-Imputation Example".
+
+## Inputs
+
+The analysis data must contain survival time/status columns, a family cluster,
+an individual id, a proband indicator, current age, one continuous PRS
+covariate, and one binary carrier covariate.
+
+```{r setup, eval = FALSE}
+library(ikunfrailty)
+library(survival)
+
+data("ikun_example_joint_mar20", package = "ikunfrailty")
+data("ikun_example_kinship", package = "ikunfrailty")
+data("ikun_example_pedigree", package = "ikunfrailty")
+
+prior <- pdmi_prior(
+  continuous = list(
+    newx = normal_kinship(~ mgene, covariance = "kinship+iid")
+  ),
+  binary = list(
+    mgene = carrier_hwe(q = "estimate", q0 = 0.02, n0 = 50)
+  )
+)
+```
+
+## Fit
+
+`pdmi_frailty()` derives the disease component, ascertainment denominator,
+support restriction, and sampler from the analysis formula. The user supplies
+only the working covariate prior.
+
+```{r fit, eval = FALSE}
+fit <- pdmi_frailty(
+  formula = Surv(t0, time, status) ~ mgene + newx + cluster(famID),
+  data = ikun_example_joint_mar20,
+  kinship = ikun_example_kinship,
+  impute = list(continuous = "newx", binary = "mgene"),
+  prior = prior,
+  M = 20,
+  B = 50,
+  numit = 10,
+  report = "both",
+  pedigree = ikun_example_pedigree,
+  seed = 20260527,
+  progress = TRUE
+)
+```
+
+Use `impute = "newx"` for continuous-only missingness, `impute = "mgene"` for
+binary-only missingness, and both names for joint missingness. Binary and joint
+missingness require observed proband carrier status under the pop+ support.
+
+## Parameter Estimates
+
+```{r parameters, eval = FALSE}
+summary(fit)
+coef(fit)
+vcov(fit)
+```
+
+The reported parameter vector is
+`log.rho`, `log.lambda`, `beta_b`, `beta_c`, and `sigma_u2`.
+
+## Penetrance
+
+By default, penetrance is evaluated at ages 40, 50, 60, 70, and 80; PRS
+profiles -0.5, 0, and 0.5; carrier profiles 0 and 1; and `k0 = 1`.
+
+```{r penetrance, eval = FALSE}
+pen_summary(fit)
+p <- pen_plot(fit)
+p
+```
+
+You can override the grid:
+
+```{r pen-grid, eval = FALSE}
+fit2 <- pdmi_frailty(
+  Surv(t0, time, status) ~ mgene + newx + cluster(famID),
+  data = dat,
+  kinship = K,
+  impute = "newx",
+  prior = prior,
+  pen_grid = list(age = seq(35, 85, by = 5), prs = c(-1, 0, 1), gene = c(0, 1)),
+  M = 20,
+  B = 50
+)
+```
+
+## Inspect the Derived Model
+
+```{r kernel, eval = FALSE}
+imputation_model(fit)
+```
+
+This prints the kernel components derived from the analysis formula plus
+`prior`.

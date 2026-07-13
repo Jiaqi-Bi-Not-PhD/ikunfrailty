@@ -1,0 +1,115 @@
+---
+title: "Priors and Arguments"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Priors and Arguments}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+This vignette summarizes the helper functions and the main arguments of
+`pdmi_frailty()`.
+
+## Prior Constructors
+
+### Estimated continuous PRS prior
+
+```{r cr, eval = FALSE}
+normal_kinship(~ mgene, covariance = "kinship+iid")
+```
+
+This maps to the V2.2 `C-R` or `J-R` continuous prior. The mean is a linear
+function of carrier status and the covariance is
+\(\tau_g^2 K_i + \tau_e^2 I_i\), with nuisance parameters updated inside the
+PDMI sampler.
+
+### Known continuous PRS prior
+
+```{r co, eval = FALSE}
+normal_kinship(~ 1, covariance = "kinship", sigma2 = 0.1, estimate = FALSE)
+```
+
+This maps to `C-O` or `J-O`. The first validated engine uses the V2.2
+mean-zero oracle PRS prior with covariance `sigma2 * K_i`.
+
+### Estimated carrier prior
+
+```{r br, eval = FALSE}
+carrier_hwe(q = "estimate", q0 = 0.02, n0 = 50)
+```
+
+This maps to `B-R` or `J-R`. The allele frequency is updated under the
+carrier-conditioned pop+ Mendelian/HWE prior.
+
+### Known carrier prior
+
+```{r bo, eval = FALSE}
+carrier_hwe(q = 0.02)
+```
+
+This maps to `B-O` or `J-O`.
+
+## Main Arguments
+
+`formula` must contain a `Surv()` response, two scalar disease covariates, and
+one `cluster()` term.
+
+`data` is the analysis data. Required columns are:
+
+- survival start/time/status columns;
+- family cluster;
+- individual id;
+- proband indicator;
+- current age;
+- the continuous and binary covariates.
+
+`kinship` is the analysis-record kinship matrix. Named matrices are matched to
+`id`; unnamed matrices must already be in data order.
+
+`impute` selects which covariates are subject to missingness:
+
+```{r impute, eval = FALSE}
+impute = "newx"
+impute = "mgene"
+impute = c("newx", "mgene")
+impute = list(continuous = "newx", binary = "mgene")
+```
+
+`prior` must include prior components for the variables listed in `impute`.
+For joint missingness, the first validated engine supports matched oracle
+priors (`C-O + B-O`) or matched estimated priors (`C-R + B-R`).
+
+`M` is the number of imputations.
+
+`B` is the burn-in count. The V2.2 sampler runs `B + numit` updates and keeps
+the final state for each imputation.
+
+`pen_grid` can override the default penetrance grid:
+
+```{r pen-grid, eval = FALSE}
+pen_grid = list(
+  age = c(40, 50, 60, 70, 80),
+  prs = c(-0.5, 0, 0.5),
+  gene = c(0, 1),
+  k0 = 1
+)
+```
+
+`control = pdmi_control()` changes numerical controls such as quadrature order,
+frailtypack maximum iterations, and slice sampler settings.
+
+## Unsupported First-Version Cases
+
+The API is designed for later extensions, but version 0.0.1 errors clearly for
+unsupported cases:
+
+- more than one continuous covariate;
+- more than one binary covariate;
+- transformed or interaction disease covariate terms;
+- Bernoulli GLM binary priors;
+- multivariate continuous priors;
+- missing proband carrier status.

@@ -1,0 +1,144 @@
+---
+title: "V2.2 One-Replicate Multiple-Imputation Example"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{V2.2 One-Replicate Multiple-Imputation Example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, purl = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE, purl = FALSE)
+```
+
+This vignette shows a hands-on workflow using the V2.2-style example data
+shipped with `ikunfrailty`. The data were generated once from the original
+V2.2 simfam/FamEvent pipeline and saved in the package so users do not need the
+simulation source tree to try `pdmi_frailty()`.
+
+The shipped replicate contains 498 selected pop+ families. Three incomplete
+analysis data sets were made from the same complete replicate:
+
+- `ikun_example_continuous_mar20`: 20% MAR missingness in `newx`;
+- `ikun_example_binary_mar20`: 20% MAR missingness in non-proband `mgene`;
+- `ikun_example_joint_mar20`: 20% MAR missingness in both `newx` and non-proband `mgene`.
+
+The complete runnable script is installed with the package:
+
+```{r script-location, purl = FALSE}
+system.file("examples", "v22-one-replicate-mi.R", package = "ikunfrailty")
+```
+
+## Load Data
+
+```{r load-data, purl = FALSE}
+library(ikunfrailty)
+library(survival)
+
+data("ikun_example_complete", package = "ikunfrailty")
+data("ikun_example_continuous_mar20", package = "ikunfrailty")
+data("ikun_example_binary_mar20", package = "ikunfrailty")
+data("ikun_example_joint_mar20", package = "ikunfrailty")
+data("ikun_example_kinship", package = "ikunfrailty")
+data("ikun_example_pedigree", package = "ikunfrailty")
+data("ikun_example_missing_diagnostics", package = "ikunfrailty")
+data("ikun_example_metadata", package = "ikunfrailty")
+
+dim(ikun_example_complete)
+length(unique(ikun_example_complete$famID))
+ikun_example_missing_diagnostics
+ikun_example_metadata
+```
+
+The package stores the aligned kinship matrix separately because
+`pdmi_frailty()` needs it as the `kinship` argument. The pedigree copy is needed
+for binary-only and joint missingness.
+
+## Specify The Working Prior
+
+Users provide only the working covariate prior. The disease likelihood,
+ascertainment denominator, support restriction, and posterior-draw sampler are
+derived from the analysis formula.
+
+```{r prior, purl = FALSE}
+prior <- pdmi_prior(
+  continuous = list(
+    newx = normal_kinship(~ mgene, covariance = "kinship+iid")
+  ),
+  binary = list(
+    mgene = carrier_hwe(q = "estimate", q0 = 0.02, n0 = 50)
+  )
+)
+
+analysis_formula <- Surv(t0, time, status) ~ mgene + newx + cluster(famID)
+```
+
+## Continuous Missingness
+
+```{r fit-continuous, purl = FALSE}
+fit_continuous <- pdmi_frailty(
+  formula = analysis_formula,
+  data = ikun_example_continuous_mar20,
+  kinship = ikun_example_kinship,
+  impute = list(continuous = "newx"),
+  prior = prior,
+  M = 20,
+  B = 50,
+  numit = 10,
+  report = "both",
+  pedigree = ikun_example_pedigree,
+  seed = 910135,
+  progress = TRUE
+)
+
+summary(fit_continuous)
+```
+
+## Binary Missingness
+
+```{r fit-binary, purl = FALSE}
+fit_binary <- pdmi_frailty(
+  formula = analysis_formula,
+  data = ikun_example_binary_mar20,
+  kinship = ikun_example_kinship,
+  impute = list(binary = "mgene"),
+  prior = prior,
+  M = 20,
+  B = 50,
+  numit = 10,
+  report = "both",
+  pedigree = ikun_example_pedigree,
+  seed = 920135,
+  progress = TRUE
+)
+
+summary(fit_binary)
+```
+
+## Joint Missingness
+
+```{r fit-joint, purl = FALSE}
+fit_joint <- pdmi_frailty(
+  formula = analysis_formula,
+  data = ikun_example_joint_mar20,
+  kinship = ikun_example_kinship,
+  impute = list(continuous = "newx", binary = "mgene"),
+  prior = prior,
+  M = 20,
+  B = 50,
+  numit = 10,
+  report = "both",
+  pedigree = ikun_example_pedigree,
+  seed = 930135,
+  progress = TRUE
+)
+
+summary(fit_joint)
+pen_summary(fit_joint)
+imputation_model(fit_joint)
+pen_plot(fit_joint)
+```
+
+For a quick syntax smoke test, reduce `M`, `B`, and `numit`. The values above
+match the V2.2 package-performance setting and therefore can take time on a
+local laptop.

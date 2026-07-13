@@ -1,0 +1,59 @@
+Package: ikunfrailty
+Title: Imputation of Covariates for Kinship-Induced Unobserved Frailty under Nonrandom Ascertainment
+Version: 0.0.1
+Authors@R: c(
+    person("Jiaqi", "Bi", role = c("aut", "cre"), email = "jbi23@uwo.ca"),
+    person("Laurent", "Briollais", role = "ctb", email = "laurent@lunenfeld.ca"),
+    person("Osvaldo", "Espin-Garcia", role = "aut", email = "oespinga@uwo.ca"),
+    person("Yun-Hee", "Choi", role = "aut", email = "yun-hee.choi@schulich.uwo.ca")
+  )
+Description: ikunfrailty stands for Imputation of covariates for
+    Kinship-induced Unobserved frailty under Nonrandom ascertainment. This
+    research package implements the proposed posterior-draw multiple
+    imputation method for the frailtypack ascertainment-corrected correlated
+    frailty model targeted by the V2.2 technical note. The validated first
+    engine supports one continuous polygenic risk score covariate and one
+    binary carrier covariate, separately or jointly missing, and exposes
+    pooled parameter estimates and penetrance summaries.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+LazyData: true
+Depends:
+    R (>= 4.1.0)
+Imports:
+    frailtypack,
+    graphics,
+    parallel,
+    stats,
+    survival,
+    utils
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    roxygen2,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Collate:
+    'v22_config.R'
+    'v22_packages_and_sources.R'
+    'v22_numerics.R'
+    'v22_pdmi_diagnostics.R'
+    'v22_support.R'
+    'v22_frailtypack_analysis.R'
+    'v22_pdmi_continuous.R'
+    'v22_pdmi_binary.R'
+    'v22_pdmi_joint.R'
+    'v22_pdmi_exact_slice.R'
+    'v22_pdmi_core.R'
+    'package.R'
+    'data.R'
+    'control.R'
+    'prior.R'
+    'formula.R'
+    'fit.R'
+    'methods.R'
+    'plot.R'
+Config/roxygen2/version: 8.0.0

@@ -1,0 +1,110 @@
+---
+title: "Congenial Imputation Model"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Congenial Imputation Model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`ikunfrailty` targets the special analysis model derived in
+`frailtypack_congenial_pdmi_only_technical_note.tex`. The package does not ask
+users to write the disease part of the imputation model. Instead, it derives
+the congenial kernel from the analysis formula and combines it with the
+working covariate prior supplied by `pdmi_prior()`.
+
+The imputation target is
+
+\[
+f(X_M \mid X_O,Y,P,A=1;\psi) \propto
+\prod_i
+\frac{s_i(Y_i,X_i)M_i(Y_i\mid X_i;\theta)}
+{\alpha_i^F(X_i;\theta)}
+g_i^A(X_i\mid P_i;\eta_X).
+\]
+
+## What the Formula Provides
+
+The formula identifies:
+
+- the survival response through `Surv()`;
+- the event/status column;
+- the two disease covariates;
+- the family cluster through `cluster(family)`.
+
+For example:
+
+```{r formula, eval = FALSE}
+Surv(t0, time, status) ~ mgene + newx + cluster(famID)
+```
+
+The first package engine validates that this is the V2.2 scalar target model:
+one binary carrier covariate and one continuous PRS covariate. The completed
+data analysis uses the frailtypack model
+
+```{r frailtypack, eval = FALSE}
+frailtypack::frailtyPenal(
+  Surv(t0, time, status) ~ mgene + newx + cluster(famID),
+  data = completed_data,
+  hazard = "Weibull",
+  RandDist = "LogN",
+  covMatrix1 = K,
+  recurrentAG = TRUE,
+  proband = completed_data$proband,
+  currentage = completed_data$currentage,
+  agemin = 0
+)
+```
+
+## What the Prior Provides
+
+The user supplies only \(g_i^A(X_i \mid P_i; \eta_X)\):
+
+```{r prior, eval = FALSE}
+prior <- pdmi_prior(
+  continuous = list(newx = normal_kinship(~ mgene, covariance = "kinship+iid")),
+  binary = list(mgene = carrier_hwe(q = "estimate"))
+)
+```
+
+This chooses the realistic prior versions `C-R`, `B-R`, or `J-R`, depending on
+which variables are listed in `impute`. Known oracle versions can be requested
+with a known kinship PRS prior and numeric carrier allele frequency.
+
+## Derived Components
+
+`pdmi_frailty()` derives:
+
+- \(M_i(Y_i \mid X_i;\theta)\): the Weibull/lognormal correlated-frailty
+  likelihood implied by the analysis formula;
+- \(\alpha_i^F(X_i;\theta)\): the pop+ proband ascertainment probability using
+  proband `currentage`, covariates, kinship diagonal, and quadrature;
+- \(s_i(Y_i,X_i)\): the support restriction requiring one affected carrier
+  proband per family;
+- disease-parameter posterior draws by exact slice sampling on the reported
+  omega scale;
+- frailty draws by family-level elliptical slice sampling;
+- continuous PRS missing-value draws from the conditional normal prior times
+  the disease and ascertainment terms;
+- binary carrier missing-value draws by Mendelian genotype Gibbs updates.
+
+For joint missingness, the binary genotype update includes the continuous
+prior log density when the PRS prior depends on carrier status.
+
+Inspect the derived object:
+
+```{r inspect, eval = FALSE}
+fit <- pdmi_frailty(
+  Surv(t0, time, status) ~ mgene + newx + cluster(famID),
+  data = dat,
+  kinship = K,
+  impute = c("newx", "mgene"),
+  prior = prior
+)
+
+imputation_model(fit)
+```

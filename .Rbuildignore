@@ -1,0 +1,8 @@
+^\\.DS_Store$
+^.*\\.Rcheck$
+^.*\\.tar\\.gz$
+^data-raw$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.positai$
+^\.claude$

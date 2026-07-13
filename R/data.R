@@ -1,0 +1,82 @@
+#' V2.2 simfam one-replicate example data
+#'
+#' @description
+#' Package example data generated once from the V2.2 exact-slice
+#' simfam/FamEvent data-generation pipeline. The complete data contain 498
+#' selected pop+ families. Three incomplete analysis data sets were then made
+#' from that same complete replicate: 20% MAR continuous PRS missingness, 20%
+#' MAR binary carrier missingness, and 20%/20% joint PRS/carrier missingness.
+#'
+#' @details
+#' The V2.2 scenario uses a Weibull baseline, lognormal kinship-induced frailty,
+#' allele frequency `pm = 0.02`, PRS variance `0.1`, `sigma_u2 = 0.5`, and the
+#' simulation-scale disease parameters stored in `ikun_example_metadata$omega`.
+#' The analysis data columns match the `pdmi_frailty()` examples:
+#' `t0`, `time`, `status`, `mgene`, `newx`, `famID`, `proband`,
+#' `currentage`, `indID`, `fatherID`, `motherID`, plus generation-only columns.
+#'
+#' @format
+#' `ikun_example_complete`, `ikun_example_continuous_mar20`,
+#' `ikun_example_binary_mar20`, and `ikun_example_joint_mar20` are data frames
+#' with identical rows and columns. `ikun_example_kinship` is the row-aligned
+#' kinship matrix. `ikun_example_pedigree` is the pedigree copy used by binary
+#' and joint imputation. `ikun_example_missing_diagnostics` is a list of
+#' realized missingness summaries. `ikun_example_metadata` is a list of
+#' scenario constants, seeds, and generation provenance.
+#'
+#' @source `data-raw/make-v22-example-data.R`
+#'
+#' @examples
+#' data("ikun_example_joint_mar20")
+#' data("ikun_example_kinship")
+#' data("ikun_example_pedigree")
+#'
+#' prior <- pdmi_prior(
+#'   continuous = list(newx = normal_kinship(~ mgene, covariance = "kinship+iid")),
+#'   binary = list(mgene = carrier_hwe(q = "estimate", q0 = 0.02, n0 = 50))
+#' )
+#'
+#' \dontrun{
+#' fit <- pdmi_frailty(
+#'   survival::Surv(t0, time, status) ~ mgene + newx + survival::cluster(famID),
+#'   data = ikun_example_joint_mar20,
+#'   kinship = ikun_example_kinship,
+#'   impute = list(continuous = "newx", binary = "mgene"),
+#'   prior = prior,
+#'   M = 20,
+#'   B = 50,
+#'   numit = 10,
+#'   pedigree = ikun_example_pedigree,
+#'   seed = 930135,
+#'   progress = TRUE
+#' )
+#' summary(fit)
+#' pen_summary(fit)
+#' pen_plot(fit)
+#' }
+#' @name ikun_example_data
+NULL
+
+#' @rdname ikun_example_data
+"ikun_example_complete"
+
+#' @rdname ikun_example_data
+"ikun_example_continuous_mar20"
+
+#' @rdname ikun_example_data
+"ikun_example_binary_mar20"
+
+#' @rdname ikun_example_data
+"ikun_example_joint_mar20"
+
+#' @rdname ikun_example_data
+"ikun_example_kinship"
+
+#' @rdname ikun_example_data
+"ikun_example_pedigree"
+
+#' @rdname ikun_example_data
+"ikun_example_missing_diagnostics"
+
+#' @rdname ikun_example_data
+"ikun_example_metadata"
